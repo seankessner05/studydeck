@@ -18,6 +18,7 @@ describe("prompt", () => {
     expect(p).toContain('<note label="CLUB 2026-01-01: T">');
     expect(p).toContain("Student: hi");
     expect(p.trim().endsWith("Student question: Q?")).toBe(true);
+    expect(buildUserPrompt("Q?", [], [], new Date(2026, 9, 25))).toContain("Today is Sunday, October 25, 2026.");
   });
 });
 

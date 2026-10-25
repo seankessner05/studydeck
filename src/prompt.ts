@@ -36,12 +36,13 @@ export function buildSystemPrompt(useGeneralKnowledge: boolean): string {
   return base.join("\n");
 }
 
-export function buildUserPrompt(question: string, notes: Note[], history: ChatTurn[] = []): string {
+export function buildUserPrompt(question: string, notes: Note[], history: ChatTurn[] = [], today = new Date()): string {
   const noteBlocks = notes
     .map((n) => `<note label="${citationLabel(n)}">\n${n.body}\n</note>`)
     .join("\n\n");
   const hist = history.length
     ? "\nPrevious conversation:\n" + history.map((t) => `${t.role === "user" ? "Student" : "StudyDeck"}: ${t.text}`).join("\n") + "\n"
     : "";
-  return `${noteBlocks || "(no notes available)"}\n${hist}\nStudent question: ${question}`;
+  const date = today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return `${noteBlocks || "(no notes available)"}\n${hist}\nToday is ${date}.\nStudent question: ${question}`;
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { runSync, extractJsonArray, stripPrefix, slugify } from "../src/sync";
+import { runSync, extractJsonArray, stripPrefix, slugify, routeMeeting } from "../src/sync";
 import type { Runner } from "../src/claude";
 
 const fakeRunner = (): { runner: Runner; calls: string[] } => {
@@ -57,5 +57,22 @@ describe("sync", () => {
     expect(stripPrefix("ECON 300 - Fiscal")).toBe("Fiscal");
     expect(stripPrefix("CLUB: Pitch")).toBe("Pitch");
     expect(slugify("A  B/C!")).toBe("a-b-c");
+  });
+
+  it("uses Claude's course suggestion only when the title has no prefix", () => {
+    expect(routeMeeting({ id: "1", title: "Perfect competition", date: "2026-10-22", course: "ECON301" })).toBe("ECON301");
+    expect(routeMeeting({ id: "1", title: "ECON300 review", date: "2026-10-22", course: "ECON301" })).toBe("ECON300");
+    expect(routeMeeting({ id: "1", title: "Visa appointment", date: "2026-10-22", course: "NOPE" })).toBe("unsorted");
+  });
+
+  it("moves previously unsorted notes once a course is known", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sd-sync-"));
+    fs.mkdirSync(path.join(dir, "unsorted"));
+    fs.writeFileSync(path.join(dir, "unsorted", "2026-10-22_perfect-competition.md"), "---\ntitle: Perfect competition\ncourse: unsorted\ndate: 2026-10-22\ngranola_id: g1\n---\nbody");
+    const runner: Runner = async () => ({ text: '[{"id":"g1","title":"Perfect competition","date":"2026-10-22","course":"ECON301"}]' });
+    const r = await runSync({ runner, notesDir: dir });
+    expect(r.moved).toEqual([{ course: "ECON301", file: "2026-10-22_perfect-competition.md", title: "Perfect competition" }]);
+    expect(fs.existsSync(path.join(dir, "unsorted", "2026-10-22_perfect-competition.md"))).toBe(false);
+    expect(fs.readFileSync(path.join(dir, "ECON301", "2026-10-22_perfect-competition.md"), "utf8")).toContain("course: ECON301");
   });
 });

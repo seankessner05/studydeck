@@ -49,7 +49,7 @@ StudyDeck fixes both. It syncs my Granola notes into course folders automaticall
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     G[("Granola<br/>meeting notes")] -- "claude -p + Granola MCP<br/>(npm run sync / Sync button)" --> N["./notes/COURSE/<br/>YYYY-MM-DD_topic.md"]
     S["./sample-notes<br/>(demo + fallback)"] --> R
     N --> R["Retrieval<br/>all notes if they fit,<br/>else keyword + recency"]

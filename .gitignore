@@ -1,0 +1,7 @@
+node_modules/
+public/app.css
+data/
+# Real notes stay local; only sample notes are committed
+notes/*/*.md
+!notes/*/*_sample-*.md
+.env

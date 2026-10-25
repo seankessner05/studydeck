@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StudyDeck</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body class="h-screen bg-slate-50 text-slate-800 antialiased">
+  <div class="flex h-full">
+    <!-- Sidebar -->
+    <aside class="w-60 shrink-0 border-r border-slate-200 bg-white flex flex-col">
+      <div class="px-4 py-4 border-b border-slate-100">
+        <div class="text-lg font-bold tracking-tight">Study<span class="text-indigo-600">Deck</span></div>
+        <div class="text-xs text-slate-500">Cited chat over your notes</div>
+      </div>
+      <nav id="courses" class="flex-1 overflow-y-auto p-2 space-y-0.5"></nav>
+      <div class="p-3 border-t border-slate-100">
+        <button id="syncBtn" class="w-full rounded-lg bg-slate-900 text-white text-sm py-2 hover:bg-slate-700 disabled:opacity-50">Sync from Granola</button>
+        <div id="syncStatus" class="mt-2 text-xs text-slate-500 whitespace-pre-wrap max-h-40 overflow-y-auto"></div>
+      </div>
+    </aside>
+
+    <!-- Chat -->
+    <main class="flex-1 flex flex-col min-w-0">
+      <header class="px-6 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
+        <div>
+          <div id="scopeTitle" class="font-semibold">All courses</div>
+          <div id="scopeSub" class="text-xs text-slate-500"></div>
+        </div>
+        <button id="clearBtn" class="text-xs text-slate-500 hover:text-red-600">Clear chat</button>
+      </header>
+      <div id="messages" class="flex-1 overflow-y-auto px-6 py-6 space-y-5"></div>
+      <form id="form" class="border-t border-slate-200 bg-white px-6 py-4">
+        <div class="flex gap-2">
+          <input id="q" autocomplete="off" placeholder="Ask about your notes…" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button id="send" class="rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50">Ask</button>
+        </div>
+        <label class="mt-2 inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+          <input id="general" type="checkbox" class="accent-amber-500" />
+          <span>Use general knowledge <span class="text-slate-400">(answers may include information that is <b>not</b> from your notes, labeled)</span></span>
+        </label>
+      </form>
+    </main>
+
+    <!-- Source panel -->
+    <aside id="source" class="hidden w-[30rem] shrink-0 border-l border-slate-200 bg-white flex-col">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-start justify-between gap-2">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-slate-400">Source</div>
+          <div id="sourceTitle" class="font-semibold text-sm"></div>
+        </div>
+        <button id="closeSource" class="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+      </div>
+      <div id="sourceBody" class="md flex-1 overflow-y-auto px-5 py-3 text-sm"></div>
+    </aside>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { checkClaude, runClaude, type Runner } from "./claude.js";
+import type { Runner } from "./claude.js";
 import { routeTitle } from "./courses.js";
 import { NOTES_DIR, loadNotes } from "./notes.js";
 

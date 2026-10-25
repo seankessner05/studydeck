@@ -1,7 +1,14 @@
+# Dependencies and build output
 node_modules/
 public/app.css
+
+# Private: real class notes and chat history never leave this machine
+notes/
 data/
-# Real notes stay local; only sample notes are committed
-notes/*/*.md
-!notes/*/*_sample-*.md
+
+# Secrets
 .env
+.env.*
+!.env.example
+
+.DS_Store

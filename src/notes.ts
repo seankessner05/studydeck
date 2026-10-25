@@ -15,6 +15,15 @@ export interface Note {
 }
 
 export const NOTES_DIR = path.resolve(process.env.STUDYDECK_NOTES_DIR ?? "notes");
+export const SAMPLE_DIR = path.resolve(process.env.STUDYDECK_SAMPLE_DIR ?? "sample-notes");
+
+export type NotesSource = "notes" | "samples";
+
+/** Demo mode always uses samples; otherwise real notes, falling back to samples when ./notes is empty. */
+export function resolveNotesDir(notesDir: string, sampleDir: string, demo: boolean): { dir: string; source: NotesSource } {
+  if (!demo && loadNotes("all", notesDir).length > 0) return { dir: notesDir, source: "notes" };
+  return { dir: sampleDir, source: "samples" };
+}
 
 export function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);

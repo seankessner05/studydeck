@@ -118,3 +118,14 @@ export const runClaude: Runner = (opts) =>
     });
     child.stdin.end(opts.prompt);
   });
+
+/** Turn CLI failures into messages a student can act on. */
+export function friendlyError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/ENOENT/.test(msg)) return "Couldn't find the `claude` command. Install Claude Code and make sure it's on your PATH, then restart StudyDeck.";
+  if (/not logged in|\/login|authenticat/i.test(msg)) return "Claude Code isn't logged in. Run `claude` in a terminal, log in, then try again.";
+  if (/rate.?limit|usage limit|overloaded|529/i.test(msg)) return "Claude is busy or you've hit your usage limit. Wait a minute and try again.";
+  if (/SIGTERM|timed? ?out|exited with code null/i.test(msg)) return "Claude took too long to answer. Try a shorter question or a single course.";
+  if (/Cancelled/.test(msg)) return "Request cancelled.";
+  return `Something went wrong talking to Claude: ${msg.slice(0, 300)}`;
+}

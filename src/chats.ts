@@ -46,3 +46,23 @@ export function clearChat(dataDir: string, course: string) {
   delete store[course];
   saveChats(dataDir, store);
 }
+
+/** Consecutive days (ending today or yesterday) on which a question was asked, across all courses. */
+export function studyStreak(store: ChatStore, today = new Date()): number {
+  const days = new Set<string>();
+  for (const msgs of Object.values(store)) {
+    for (const m of msgs) if (m.role === "user") days.add(localDay(new Date(m.createdAt)));
+  }
+  const d = new Date(today);
+  if (!days.has(localDay(d))) d.setDate(d.getDate() - 1); // streak survives until you skip a full day
+  let streak = 0;
+  while (days.has(localDay(d))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function localDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

@@ -1,15 +1,51 @@
 @import "tailwindcss";
 @source "./";
+@custom-variant dark (&:where(.dark, .dark *));
 
-.md p { margin: 0.4rem 0; }
-.md ul { list-style: disc; padding-left: 1.25rem; margin: 0.4rem 0; }
-.md h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.5rem; }
-.md h2 { font-size: 1.05rem; font-weight: 600; margin: 1rem 0 0.4rem; }
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Rendered markdown (answers and source notes) */
+.md p { margin: 0.45rem 0; line-height: 1.6; }
+.md ul { list-style: disc; padding-left: 1.25rem; margin: 0.45rem 0; }
+.md li { margin: 0.2rem 0; line-height: 1.55; }
+.md h1 { font-size: 1.2rem; font-weight: 700; margin: 0.75rem 0 0.5rem; letter-spacing: -0.01em; }
+.md h2 { font-size: 0.8rem; font-weight: 700; margin: 1.1rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-slate-500); }
 .md h3 { font-weight: 600; margin: 0.75rem 0 0.3rem; }
-.md table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.9rem; }
-.md th, .md td { border: 1px solid #e2e8f0; padding: 0.4rem 0.5rem; vertical-align: top; text-align: left; }
-.md th { background: #f8fafc; }
-.md blockquote { border-left: 3px solid #f59e0b; background: #fffbeb; padding: 0.4rem 0.75rem; margin: 0.5rem 0; color: #92400e; }
-.hl { background: #fef08a !important; outline: 2px solid #eab308; transition: background 0.3s; }
-.cursor::after { content: "▍"; animation: blink 1s steps(1) infinite; color: #6366f1; }
+.md code { font-family: var(--font-mono); font-size: 0.85em; padding: 0.1rem 0.3rem; border-radius: 0.25rem; background: var(--color-slate-100); }
+.md table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0.6rem 0; font-size: 0.875rem; border: 1px solid var(--color-slate-200); border-radius: 0.6rem; overflow: hidden; }
+.md th, .md td { padding: 0.5rem 0.65rem; vertical-align: top; text-align: left; border-bottom: 1px solid var(--color-slate-200); }
+.md tr:last-child td { border-bottom: 0; }
+.md td:first-child { width: 34%; font-weight: 600; color: var(--color-slate-600); }
+.md th { background: var(--color-slate-50); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-slate-500); }
+.md blockquote { border-left: 3px solid var(--color-amber-400); background: var(--color-amber-50); padding: 0.45rem 0.8rem; margin: 0.6rem 0; color: var(--color-amber-900); border-radius: 0 0.4rem 0.4rem 0; font-size: 0.85rem; }
+
+.dark .md h2, .dark .md th { color: var(--color-slate-400); }
+.dark .md code { background: var(--color-slate-800); }
+.dark .md table, .dark .md th, .dark .md td { border-color: var(--color-slate-700); }
+.dark .md th { background: var(--color-slate-800); }
+.dark .md td:first-child { color: var(--color-slate-300); }
+.dark .md blockquote { background: color-mix(in oklab, var(--color-amber-500) 12%, transparent); color: var(--color-amber-200); }
+
+/* Cited passage highlight in the source panel */
+.hl { background: var(--color-yellow-100) !important; box-shadow: inset 3px 0 0 var(--color-yellow-500); animation: flash 1.2s ease-out; }
+.dark .hl { background: color-mix(in oklab, var(--color-yellow-400) 22%, transparent) !important; }
+@keyframes flash { 0% { background: var(--color-yellow-300); } }
+
+/* Streaming cursor and thinking dots */
+.cursor > :last-child::after { content: "▍"; margin-left: 1px; color: var(--color-indigo-500); animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+.dots span { display: inline-block; width: 6px; height: 6px; margin-right: 3px; border-radius: 9999px; background: currentColor; animation: bounce 1.2s infinite ease-in-out; }
+.dots span:nth-child(2) { animation-delay: 0.15s; }
+.dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.4; } 40% { transform: translateY(-4px); opacity: 1; } }
+
+.fade-in { animation: fadeIn 0.25s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } }
+.slide-in { animation: slideIn 0.25s ease-out; }
+@keyframes slideIn { from { opacity: 0; transform: translateX(16px); } }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

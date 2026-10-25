@@ -12,3 +12,6 @@ data/
 !.env.example
 
 .DS_Store
+
+# Local editor/agent config
+.claude/

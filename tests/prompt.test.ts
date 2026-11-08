@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildSystemPrompt, buildUserPrompt } from "../src/prompt";
-import { buildArgs, parseStreamLine } from "../src/claude";
+import { buildArgs, friendlyError, parseAuthStatus, parseStreamLine } from "../src/claude";
 import { routeTitle } from "../src/courses";
 
 describe("prompt", () => {
@@ -47,5 +47,16 @@ describe("routing", () => {
     expect(routeTitle("ATHLETICS team meeting")).toBe("ATHLETICS");
     expect(routeTitle("Coffee with Sam")).toBe("unsorted");
     expect(routeTitle("ECON999 mystery")).toBe("unsorted");
+  });
+});
+
+describe("login detection", () => {
+  it("parses `claude auth status` output", () => {
+    expect(parseAuthStatus('{"loggedIn": true, "authMethod": "claude.ai"}')).toEqual({ loggedIn: true, method: "claude.ai" });
+    expect(parseAuthStatus('{"loggedIn": false, "authMethod": "none"}')).toEqual({ loggedIn: false, method: undefined });
+    expect(parseAuthStatus("garbage")).toEqual({ loggedIn: false });
+  });
+  it("tells the student how to fix an expired session", () => {
+    expect(friendlyError(new Error("Failed to authenticate: OAuth session expired and could not be refreshed"))).toContain("claude auth login");
   });
 });

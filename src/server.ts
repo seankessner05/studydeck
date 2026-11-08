@@ -2,7 +2,7 @@ import express from "express";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { checkClaude, friendlyError, runClaude, type Runner } from "./claude.js";
+import { LOGIN_FIX, checkAuth, checkClaude, friendlyError, runClaude, type Runner } from "./claude.js";
 import { DEFAULT_COURSES, PALETTE, PROFILES, activeIdsOf, idsOf } from "./courses.js";
 import { NOTES_DIR, SAMPLE_DIR, listCourses, loadNotes, readNote, citationLabel, resolveNotesDir } from "./notes.js";
 import { PROFILE_INFO } from "./profiles.js";
@@ -11,6 +11,7 @@ import { type ChatTurn } from "./prompt.js";
 import { answerQuestion } from "./answer.js";
 import { appendMessage, clearChat, loadChats, studyStreak, type ChatMessage } from "./chats.js";
 import { loadSettings, saveSettings } from "./settings.js";
+import { DATA_DIR } from "./paths.js";
 import { runSync } from "./sync.js";
 
 export interface AppDeps {
@@ -21,7 +22,6 @@ export interface AppDeps {
 }
 
 const HISTORY_TURNS = 6;
-export const DATA_DIR = path.resolve(process.env.STUDYDECK_DATA_DIR ?? "data");
 
 export function createApp(deps: AppDeps) {
   const app = express();
@@ -147,6 +147,7 @@ function main() {
   const app = createApp({ runner: runClaude, notesDir: NOTES_DIR, sampleDir: SAMPLE_DIR, dataDir: DATA_DIR });
   app.listen(port, "127.0.0.1", () => {
     console.log(`StudyDeck running at http://localhost:${port}  (${c.version})`);
+    if (!checkAuth().loggedIn) console.warn(`\n⚠ Claude Code isn't logged in, so questions will fail until you sign in. ${LOGIN_FIX}\n`);
   });
 }
 

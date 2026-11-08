@@ -1,5 +1,5 @@
 import { checkClaude, runClaude } from "./claude.js";
-import { DATA_DIR } from "./server.js";
+import { DATA_DIR } from "./paths.js";
 import { loadRegistry } from "./registry.js";
 import { formatSyncResult, runSync } from "./sync.js";
 

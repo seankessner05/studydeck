@@ -123,9 +123,31 @@ export const runClaude: Runner = (opts) =>
 export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/ENOENT/.test(msg)) return "Couldn't find the `claude` command. Install Claude Code and make sure it's on your PATH, then restart StudyDeck.";
-  if (/not logged in|\/login|authenticat/i.test(msg)) return "Claude Code isn't logged in. Run `claude` in a terminal, log in, then try again.";
+  if (/not logged in|\/login|authenticat|oauth/i.test(msg)) return `Claude Code isn't logged in (or its session expired). ${LOGIN_FIX}`;
   if (/rate.?limit|usage limit|overloaded|529/i.test(msg)) return "Claude is busy or you've hit your usage limit. Wait a minute and try again.";
   if (/SIGTERM|timed? ?out|exited with code null/i.test(msg)) return "Claude took too long to answer. Try a shorter question or a single course.";
   if (/Cancelled/.test(msg)) return "Request cancelled.";
   return `Something went wrong talking to Claude: ${msg.slice(0, 300)}`;
+}
+
+export interface AuthStatus {
+  loggedIn: boolean;
+  method?: string;
+}
+
+export const LOGIN_FIX = "Run `claude auth login` in a terminal (or `claude`, then /login), then try again.";
+
+export function parseAuthStatus(stdout: string): AuthStatus {
+  try {
+    const d = JSON.parse(stdout);
+    return { loggedIn: d.loggedIn === true, method: typeof d.authMethod === "string" && d.authMethod !== "none" ? d.authMethod : undefined };
+  } catch {
+    return { loggedIn: false };
+  }
+}
+
+/** Is the CLI signed in? Free and instant (no model call), so it is safe to run before every batch job. */
+export function checkAuth(): AuthStatus {
+  const r = spawnSync("claude", ["auth", "status"], { encoding: "utf8", timeout: 15_000 });
+  return r.error ? { loggedIn: false } : parseAuthStatus(r.stdout);
 }

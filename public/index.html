@@ -28,7 +28,10 @@
 
       <div class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between">
         <span class="px-2">Courses</span>
-        <kbd class="rounded border border-slate-200 px-1.5 font-sans text-[10px] font-medium text-slate-400 dark:border-slate-700">⌘K</kbd>
+        <span class="flex items-center gap-1.5">
+          <button id="manageBtn" class="rounded px-1.5 text-[11px] font-medium normal-case tracking-normal text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" title="Add or archive courses">Manage</button>
+          <kbd class="rounded border border-slate-200 px-1.5 font-sans text-[10px] font-medium text-slate-400 dark:border-slate-700">⌘K</kbd>
+        </span>
       </div>
       <nav id="courses" class="flex-1 space-y-0.5 overflow-y-auto px-3"></nav>
 
@@ -111,6 +114,32 @@
         <span>↑↓ to move · Enter to select · Esc to close</span>
         <label class="flex items-center gap-1.5 md:hidden"><input id="demoMobile" type="checkbox" class="accent-indigo-600" /> Demo mode</label>
       </div>
+    </div>
+  </div>
+
+
+  <!-- Manage courses -->
+  <div id="manage" class="fixed inset-0 z-40 hidden items-start justify-center bg-slate-900/40 p-4 pt-[8vh] backdrop-blur-sm">
+    <div class="fade-in w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+        <div class="font-semibold">Manage courses</div>
+        <button id="closeManage" class="rounded-lg px-2 text-xl leading-none text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close">×</button>
+      </div>
+      <div id="manageNote" class="hidden bg-amber-50 px-5 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">Demo mode uses a fixed set of sample courses. Turn it off to manage your own.</div>
+      <div id="manageList" class="max-h-72 overflow-y-auto p-2"></div>
+      <form id="manageForm" class="space-y-2 border-t border-slate-100 p-4 dark:border-slate-800">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Add a course</div>
+        <div class="grid grid-cols-3 gap-2">
+          <input id="courseId" required placeholder="Code (FIN310)" maxlength="20" class="rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700" />
+          <input id="courseName" required placeholder="Name" maxlength="60" class="col-span-2 rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700" />
+          <input id="courseSemester" placeholder="Semester" maxlength="40" class="rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700" />
+          <select id="profile" class="col-span-2 rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+        </div>
+        <div class="flex items-center justify-between">
+          <span id="manageError" class="text-xs text-red-600 dark:text-red-400"></span>
+          <button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add course</button>
+        </div>
+      </form>
     </div>
   </div>
 

@@ -1,17 +1,20 @@
 // StudyDeck front end: plain JS, no build step.
 const $ = (id) => document.getElementById(id);
-const state = { course: "all", courses: [], total: 0, source: "samples", demo: false, streak: 0, busy: false };
+const state = { course: "all", courses: [], profiles: [], editable: false, total: 0, source: "samples", demo: false, streak: 0, busy: false };
 
-// One color per course, used for the sidebar dot and citation chips. Full class names so Tailwind keeps them.
-const COLORS = {
-  ECON300: { dot: "bg-indigo-500", chip: "bg-indigo-50 text-indigo-700 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-500/30" },
-  ECON301: { dot: "bg-sky-500", chip: "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30" },
-  ECON196: { dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" },
-  MGMT220: { dot: "bg-fuchsia-500", chip: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200 hover:bg-fuchsia-100 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:ring-fuchsia-500/30" },
-  CLUB: { dot: "bg-amber-500", chip: "bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30" },
-  EVENT: { dot: "bg-teal-500", chip: "bg-teal-50 text-teal-700 ring-teal-200 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-300 dark:ring-teal-500/30" },
-  ATHLETICS: { dot: "bg-orange-500", chip: "bg-orange-50 text-orange-700 ring-orange-200 hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-500/30" },
-  unsorted: { dot: "bg-slate-400", chip: "bg-slate-100 text-slate-700 ring-slate-200 hover:bg-slate-200 dark:bg-slate-700/50 dark:text-slate-300 dark:ring-slate-600" },
+// Course colors come from the registry (a palette name per course). Full class names so Tailwind keeps them.
+const PALETTE_CLASSES = {
+  indigo: { dot: "bg-indigo-500", chip: "bg-indigo-50 text-indigo-700 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-500/30" },
+  sky: { dot: "bg-sky-500", chip: "bg-sky-50 text-sky-700 ring-sky-200 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30" },
+  emerald: { dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" },
+  fuchsia: { dot: "bg-fuchsia-500", chip: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200 hover:bg-fuchsia-100 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:ring-fuchsia-500/30" },
+  amber: { dot: "bg-amber-500", chip: "bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30" },
+  teal: { dot: "bg-teal-500", chip: "bg-teal-50 text-teal-700 ring-teal-200 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-300 dark:ring-teal-500/30" },
+  orange: { dot: "bg-orange-500", chip: "bg-orange-50 text-orange-700 ring-orange-200 hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-500/30" },
+  rose: { dot: "bg-rose-500", chip: "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30" },
+  violet: { dot: "bg-violet-500", chip: "bg-violet-50 text-violet-700 ring-violet-200 hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30" },
+  lime: { dot: "bg-lime-500", chip: "bg-lime-50 text-lime-800 ring-lime-200 hover:bg-lime-100 dark:bg-lime-500/15 dark:text-lime-300 dark:ring-lime-500/30" },
+  slate: { dot: "bg-slate-400", chip: "bg-slate-100 text-slate-700 ring-slate-200 hover:bg-slate-200 dark:bg-slate-700/50 dark:text-slate-300 dark:ring-slate-600" },
   all: { dot: "bg-gradient-to-br from-indigo-500 to-fuchsia-500" },
 };
 const BAD_CHIP = "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-500/30";
@@ -34,7 +37,7 @@ const EMPTY_LINES = [
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const inline = (s) => s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
-const color = (c) => COLORS[c] ?? COLORS.unsorted;
+const color = (id) => PALETTE_CLASSES[id === "all" ? "all" : state.courses.find((c) => c.id === id)?.color ?? "slate"] ?? PALETTE_CLASSES.slate;
 const courseName = (id) => (id === "all" ? "All courses" : state.courses.find((c) => c.id === id)?.name ?? id);
 
 // Must match src/citations.ts (runs on escaped HTML, so quotes may appear as &quot;)
@@ -159,12 +162,12 @@ function courseItem(id, name, count) {
 }
 
 function visibleCourses() {
-  return [{ id: "all", name: "All courses", count: state.total }, ...state.courses.filter((c) => c.id !== "unsorted" || c.count > 0)];
+  return [{ id: "all", name: "All courses", count: state.total }, ...state.courses.filter((c) => !c.archived && (c.id !== "unsorted" || c.count > 0))];
 }
 
 async function refreshState() {
   const r = await fetch("/api/state").then((r) => r.json());
-  Object.assign(state, { courses: r.courses, total: r.total, source: r.source, demo: r.demo, streak: r.streak });
+  Object.assign(state, { courses: r.courses, profiles: r.profiles, editable: r.editable, total: r.total, source: r.source, demo: r.demo, streak: r.streak });
   $("courses").innerHTML = visibleCourses().map((c) => courseItem(c.id, c.name, c.count)).join("");
   $("demo").checked = $("demoMobile").checked = state.demo;
   $("sourceBadge").classList.toggle("hidden", state.source !== "samples");
@@ -329,6 +332,48 @@ function openPicker() {
 function closePicker() { $("picker").classList.add("hidden"); $("picker").classList.remove("flex"); }
 function pick(id) { closePicker(); if (id) selectCourse(id); }
 
+
+// ---- manage courses ----
+function renderManage(error = "") {
+  const rows = state.courses.filter((c) => c.id !== "unsorted").map((c) => `<div class="flex items-center gap-3 rounded-lg px-3 py-2 ${c.archived ? "opacity-50" : ""}">
+      <span class="h-2.5 w-2.5 shrink-0 rounded-full ${color(c.id).dot}"></span>
+      <div class="min-w-0 flex-1"><div class="truncate text-sm"><span class="font-mono text-xs font-semibold">${esc(c.id)}</span> ${esc(c.name)}</div>
+        <div class="text-[11px] text-slate-400">${esc(state.profiles.find((p) => p.id === c.profile)?.label ?? c.profile)}${c.semester ? " · " + esc(c.semester) : ""} · ${c.count} notes</div></div>
+      <button data-archive="${esc(c.id)}" data-to="${c.archived ? "0" : "1"}" ${state.editable ? "" : "disabled"} class="rounded-md border border-slate-200 px-2 py-1 text-xs hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800">${c.archived ? "Restore" : "Archive"}</button></div>`).join("");
+  $("manageList").innerHTML = rows;
+  $("manageNote").classList.toggle("hidden", state.editable);
+  $("manageForm").classList.toggle("hidden", !state.editable);
+  $("profile").innerHTML = state.profiles.map((p) => `<option value="${p.id}">${esc(p.label)}</option>`).join("");
+  $("manageError").textContent = error;
+}
+async function openManage() {
+  await refreshState();
+  renderManage();
+  $("manage").classList.remove("hidden");
+  $("manage").classList.add("flex");
+}
+function closeManage() { $("manage").classList.add("hidden"); $("manage").classList.remove("flex"); }
+async function saveCourse(method, url, body) {
+  const res = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return renderManage(data.error || "Something went wrong.");
+  if (body.archived && state.course === url.split("/").pop()) state.course = "all";
+  await selectCourse(state.course);
+  renderManage();
+}
+$("manageBtn").addEventListener("click", openManage);
+$("closeManage").addEventListener("click", closeManage);
+$("manage").addEventListener("click", (e) => { if (e.target === $("manage")) closeManage(); });
+$("manageList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-archive]");
+  if (b) saveCourse("PATCH", `/api/courses/${encodeURIComponent(b.dataset.archive)}`, { archived: b.dataset.to === "1" });
+});
+$("manageForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await saveCourse("POST", "/api/courses", { id: $("courseId").value, name: $("courseName").value, semester: $("courseSemester").value, profile: $("profile").value });
+  if (!$("manageError").textContent) $("manageForm").reset();
+});
+
 // ---- events ----
 $("courses").addEventListener("click", (e) => { const b = e.target.closest("[data-course]"); if (b) selectCourse(b.dataset.course); });
 $("scopeBtn").addEventListener("click", () => { if (innerWidth < 768) openPicker(); });
@@ -400,7 +445,7 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); pick(renderPicker()[pickerIndex]?.id); }
     return;
   }
-  if (e.key === "Escape") closeSource();
+  if (e.key === "Escape") { closeSource(); closeManage(); }
   if (e.key === "/" && document.activeElement !== $("q")) { e.preventDefault(); $("q").focus(); }
 });
 

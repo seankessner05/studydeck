@@ -1,4 +1,6 @@
 import { checkClaude, runClaude } from "./claude.js";
+import { DATA_DIR } from "./server.js";
+import { loadRegistry } from "./registry.js";
 import { formatSyncResult, runSync } from "./sync.js";
 
 const c = checkClaude();
@@ -6,7 +8,7 @@ if (!c.ok) {
   console.error(`\n✖ ${c.error}\n`);
   process.exit(1);
 }
-runSync({ runner: runClaude, onProgress: (m) => console.log(m) })
+runSync({ runner: runClaude, courses: loadRegistry(DATA_DIR), onProgress: (m) => console.log(m) })
   .then((r) => console.log("\n" + formatSyncResult(r)))
   .catch((e) => {
     console.error(`\n✖ Sync failed: ${e.message}`);

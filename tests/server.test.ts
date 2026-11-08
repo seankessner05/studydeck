@@ -83,6 +83,25 @@ describe("api", () => {
     expect((events.at(-1)?.[1] as any).message).toMatch(/isn't logged in/);
   });
 
+  it("manages courses through the API, but not in demo mode", async () => {
+    const post = (url: string, body: object, method = "POST") =>
+      fetch(`${base}${url}`, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    await post("/api/settings", { demo: false });
+    expect((await post("/api/courses", { id: "fin310", name: "Corporate Finance", profile: "finance" })).status).toBe(200);
+    const s = await state();
+    expect(s.courses.find((c: any) => c.id === "FIN310")).toMatchObject({ count: 0, profile: "finance" });
+    expect(s.profiles.map((p: any) => p.id)).toContain("quant-econ");
+    expect((await post("/api/courses", { id: "FIN310", name: "dupe" })).status).toBe(400);
+    expect((await post("/api/courses/FIN310", { archived: true }, "PATCH")).status).toBe(200);
+    // archived courses stay listed but leave the "all" scope
+    const { events } = await chat({ course: "FIN310", question: "x" });
+    expect(events[0][0]).toBe("meta");
+    await post("/api/settings", { demo: true });
+    expect((await post("/api/courses", { id: "NEW1", name: "x" })).status).toBe(409);
+    expect((await state()).courses.some((c: any) => c.id === "FIN310")).toBe(false);
+    // leave demo mode on, as the previous test did
+  });
+
   it("serves a note and 404s unknown ones", async () => {
     const ok = await fetch(`${base}/api/notes/ECON300/2026-10-14_sample-fiscal-multipliers.md`);
     expect((await ok.json()).title).toBe("Fiscal Multipliers");

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { COURSES, COURSE_IDS } from "./courses.js";
+import { DEFAULT_COURSES, activeIdsOf, idsOf, type Course } from "./courses.js";
 
 export interface Note {
   /** "<course>/<file>" — unique and safe to use in URLs */
@@ -19,9 +19,11 @@ export const SAMPLE_DIR = path.resolve(process.env.STUDYDECK_SAMPLE_DIR ?? "samp
 
 export type NotesSource = "notes" | "samples";
 
+const DEFAULT_IDS = idsOf(DEFAULT_COURSES);
+
 /** Demo mode always uses samples; otherwise real notes, falling back to samples when ./notes is empty. */
-export function resolveNotesDir(notesDir: string, sampleDir: string, demo: boolean): { dir: string; source: NotesSource } {
-  if (!demo && loadNotes("all", notesDir).length > 0) return { dir: notesDir, source: "notes" };
+export function resolveNotesDir(notesDir: string, sampleDir: string, demo: boolean, ids: string[] = DEFAULT_IDS): { dir: string; source: NotesSource } {
+  if (!demo && loadNotes("all", notesDir, ids).length > 0) return { dir: notesDir, source: "notes" };
   return { dir: sampleDir, source: "samples" };
 }
 
@@ -63,20 +65,22 @@ export function loadCourseNotes(course: string, dir = NOTES_DIR): Note[] {
     .map((f) => parseNote(course, f, fs.readFileSync(path.join(courseDir, f), "utf8")));
 }
 
-/** course === "all" loads every course folder. */
-export function loadNotes(course: string, dir = NOTES_DIR): Note[] {
-  if (course === "all") return COURSE_IDS.flatMap((c) => loadCourseNotes(c, dir));
+/** course === "all" loads the folders of the given course ids (default: the seed courses). */
+export function loadNotes(course: string, dir = NOTES_DIR, ids: string[] = DEFAULT_IDS): Note[] {
+  if (course === "all") return ids.flatMap((c) => loadCourseNotes(c, dir));
   return loadCourseNotes(course, dir);
 }
 
-export function listCourses(dir = NOTES_DIR) {
-  const courses = COURSES.map((c) => ({ ...c, count: loadCourseNotes(c.id, dir).length }));
-  return { courses, total: courses.reduce((n, c) => n + c.count, 0) };
+/** Every course with its note count. The total only counts active (non-archived) courses, matching the "all" scope. */
+export function listCourses(dir = NOTES_DIR, courses: Course[] = DEFAULT_COURSES) {
+  const withCounts = courses.map((c) => ({ ...c, count: loadCourseNotes(c.id, dir).length }));
+  const active = new Set(activeIdsOf(courses));
+  return { courses: withCounts, total: withCounts.filter((c) => active.has(c.id)).reduce((n, c) => n + c.count, 0) };
 }
 
 /** Safe single-note lookup (rejects path traversal). */
-export function readNote(course: string, file: string, dir = NOTES_DIR): Note | null {
-  if (!COURSE_IDS.includes(course) || file !== path.basename(file) || !file.endsWith(".md")) return null;
+export function readNote(course: string, file: string, dir = NOTES_DIR, ids: string[] = DEFAULT_IDS): Note | null {
+  if (!ids.includes(course) || file !== path.basename(file) || !file.endsWith(".md")) return null;
   const p = path.join(dir, course, file);
   if (!fs.existsSync(p)) return null;
   return parseNote(course, file, fs.readFileSync(p, "utf8"));

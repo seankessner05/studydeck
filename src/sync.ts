@@ -1,12 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Runner } from "./claude.js";
-import { COURSES, COURSE_IDS, routeTitle } from "./courses.js";
+import { DEFAULT_COURSES, activeIdsOf, idsOf, routeTitle, stripCoursePrefix, type Course } from "./courses.js";
 import { NOTES_DIR, loadNotes } from "./notes.js";
 
 export interface SyncOptions {
   runner: Runner;
   notesDir?: string;
+  /** The course registry; defaults to the seed courses. */
+  courses?: Course[];
   days?: number;
   now?: Date;
   onProgress?: (msg: string) => void;
@@ -28,13 +30,14 @@ interface Meeting {
 }
 
 /** Title prefix wins; otherwise accept Claude's suggestion if it names a real course. */
-export function routeMeeting(m: Meeting): string {
-  const byTitle = routeTitle(m.title);
+export function routeMeeting(m: Meeting, courses: Course[] = DEFAULT_COURSES): string {
+  const byTitle = routeTitle(m.title, courses);
   if (byTitle !== "unsorted") return byTitle;
-  return m.course && COURSE_IDS.includes(m.course) ? m.course : "unsorted";
+  return m.course && activeIdsOf(courses).includes(m.course) && m.course !== "unsorted" ? m.course : "unsorted";
 }
 
-const COURSE_LIST = COURSES.filter((c) => c.id !== "unsorted").map((c) => `${c.id} (${c.name})`).join(", ");
+const courseList = (courses: Course[]) =>
+  courses.filter((c) => c.id !== "unsorted" && !c.archived).map((c) => `${c.id} (${c.name})`).join(", ");
 
 const GRANOLA_TOOLS = "mcp__claude_ai_Granola__list_meetings,mcp__claude_ai_Granola__get_meetings";
 const SYNC_SYSTEM =
@@ -58,9 +61,8 @@ export function slugify(s: string): string {
 }
 
 /** "ECON300: IS-LM" -> "IS-LM" (keeps the title if nothing is left). */
-export function stripPrefix(title: string): string {
-  const t = title.replace(/^\[?\s*(ECON|MGMT)\s*[-_ ]?\d{3}\]?\s*[:\-–—]?\s*/i, "").replace(/^\[?\s*(CLUB|EVENT|ATHLETICS)\]?\s*[:\-–—]?\s*/i, "").trim();
-  return t || title.trim();
+export function stripPrefix(title: string, courses: Course[] = DEFAULT_COURSES): string {
+  return stripCoursePrefix(title, courses);
 }
 
 export function stripPreamble(text: string): string {
@@ -70,13 +72,14 @@ export function stripPreamble(text: string): string {
     .trim();
 }
 
-export function renderNote(m: Meeting, course: string, markdown: string): string {
-  const title = stripPrefix(m.title).replace(/"/g, "'");
+export function renderNote(m: Meeting, course: string, markdown: string, courses: Course[] = DEFAULT_COURSES): string {
+  const title = stripPrefix(m.title, courses).replace(/"/g, "'");
   return `---\ntitle: ${title}\ncourse: ${course}\ndate: ${m.date}\nsample: false\nsource: granola\ngranola_id: ${m.id}\n---\n\n# ${title}\n\n${markdown}\n`;
 }
 
 export async function runSync(opts: SyncOptions): Promise<SyncResult> {
   const dir = opts.notesDir ?? NOTES_DIR;
+  const courses = opts.courses ?? DEFAULT_COURSES;
   const days = opts.days ?? 14;
   const now = opts.now ?? new Date();
   const start = new Date(now.getTime() - days * 86_400_000);
@@ -90,18 +93,17 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
     prompt:
       `List my Granola meetings with a date from ${ymd(start)} through ${ymd(now)} (inclusive) using the list_meetings tool. ` +
       `Output ONLY a JSON array, no other text. Each item: {"id": string, "title": string, "date": "YYYY-MM-DD", "course": string}. ` +
-      `For "course", pick the one course this meeting is clearly about from: ${COURSE_LIST}. ` +
-      `CLUB is student clubs, EVENT is talks/workshops/career events, ATHLETICS is sports teams. ` +
+      `For "course", pick the one course this meeting is clearly about from: ${courseList(courses)}. ` +
       `Use "unsorted" if it is personal, unrelated, or you are not sure. Output [] if there are no meetings.`,
   });
   const meetings = (extractJsonArray(listed.text) as Meeting[]).filter((m) => m && m.id && m.title && /^\d{4}-\d{2}-\d{2}/.test(m.date));
   log(`Found ${meetings.length} meetings`);
 
-  const known = new Map(loadNotes("all", dir).filter((n) => n.granolaId).map((n) => [n.granolaId!, n]));
+  const known = new Map(loadNotes("all", dir, idsOf(courses)).filter((n) => n.granolaId).map((n) => [n.granolaId!, n]));
 
   for (const raw of meetings) {
     const m = { ...raw, date: raw.date.slice(0, 10) };
-    const course = routeMeeting(m);
+    const course = routeMeeting(m, courses);
     const existing = known.get(m.id);
     if (existing) {
       // A note that landed in unsorted earlier moves once we know where it belongs.
@@ -117,7 +119,7 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
       }
       continue;
     }
-    const file = `${m.date}_${slugify(stripPrefix(m.title))}.md`;
+    const file = `${m.date}_${slugify(stripPrefix(m.title, courses))}.md`;
     const target = path.join(dir, course, file);
     if (fs.existsSync(target)) {
       result.skipped.push({ title: m.title, reason: "file exists" });
@@ -138,9 +140,9 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
         continue;
       }
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, renderNote(m, course, markdown), "utf8");
-      known.set(m.id, { id: `${course}/${file}`, course, file, date: m.date, title: m.title, sample: false, body: markdown, granolaId: m.id });
-      result.added.push({ course, file, title: stripPrefix(m.title) });
+      fs.writeFileSync(target, renderNote(m, course, markdown, courses), "utf8");
+      known.set(m.id, { id: `${course}/${file}`, course, file, date: m.date, title: stripPrefix(m.title, courses), sample: false, body: markdown, granolaId: m.id });
+      result.added.push({ course, file, title: stripPrefix(m.title, courses) });
     } catch (e) {
       result.errors.push({ title: m.title, error: e instanceof Error ? e.message : String(e) });
     }

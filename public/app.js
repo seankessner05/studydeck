@@ -374,6 +374,40 @@ $("manageForm").addEventListener("submit", async (e) => {
   if (!$("manageError").textContent) $("manageForm").reset();
 });
 
+// ---- doctor ----
+const STATUS_UI = {
+  ok: { icon: "✓", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  warn: { icon: "!", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  fail: { icon: "✗", cls: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" },
+};
+async function runDoctorUi(deep = false) {
+  $("doctor").classList.remove("hidden");
+  $("doctor").classList.add("flex");
+  $("doctorSummary").textContent = deep ? "Running a deep check (asks Claude one tiny question)…" : "Checking your setup…";
+  $("doctorList").innerHTML = '<div class="flex items-center gap-2 px-5 py-6 text-sm text-slate-400"><span class="dots"><span></span><span></span><span></span></span>This can take up to 20 seconds.</div>';
+  $("doctorAgain").disabled = $("doctorDeep").disabled = true;
+  try {
+    const checks = await fetch(`/api/doctor${deep ? "?deep=1" : ""}`).then((r) => r.json());
+    const n = (s) => checks.filter((c) => c.status === s).length;
+    $("doctorSummary").textContent = n("fail") ? `${n("fail")} problem${n("fail") === 1 ? "" : "s"} to fix` : n("warn") ? `Working, with ${n("warn")} thing${n("warn") === 1 ? "" : "s"} to look at` : "Everything looks good ✨";
+    $("doctorList").innerHTML = checks.map((c) => `<div class="flex gap-3 px-5 py-3">
+        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${STATUS_UI[c.status].cls}">${STATUS_UI[c.status].icon}</span>
+        <div class="min-w-0 flex-1"><div class="text-sm font-medium">${esc(c.label)}</div>
+          <div class="text-xs text-slate-500 dark:text-slate-400">${esc(c.detail)}</div>
+          ${c.fix ? `<div class="mt-1.5 rounded-md bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">${esc(c.fix)}</div>` : ""}</div></div>`).join("");
+  } catch (e) {
+    $("doctorSummary").textContent = "Couldn't reach the StudyDeck server.";
+    $("doctorList").innerHTML = "";
+  }
+  $("doctorAgain").disabled = $("doctorDeep").disabled = false;
+}
+function closeDoctor() { $("doctor").classList.add("hidden"); $("doctor").classList.remove("flex"); }
+$("doctorBtn").addEventListener("click", () => runDoctorUi());
+$("doctorAgain").addEventListener("click", () => runDoctorUi());
+$("doctorDeep").addEventListener("click", () => runDoctorUi(true));
+$("closeDoctor").addEventListener("click", closeDoctor);
+$("doctor").addEventListener("click", (e) => { if (e.target === $("doctor")) closeDoctor(); });
+
 // ---- events ----
 $("courses").addEventListener("click", (e) => { const b = e.target.closest("[data-course]"); if (b) selectCourse(b.dataset.course); });
 $("scopeBtn").addEventListener("click", () => { if (innerWidth < 768) openPicker(); });
@@ -445,7 +479,7 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); pick(renderPicker()[pickerIndex]?.id); }
     return;
   }
-  if (e.key === "Escape") { closeSource(); closeManage(); }
+  if (e.key === "Escape") { closeSource(); closeManage(); closeDoctor(); }
   if (e.key === "/" && document.activeElement !== $("q")) { e.preventDefault(); $("q").focus(); }
 });
 

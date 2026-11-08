@@ -1,0 +1,127 @@
+import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { formatChecks, nodeIsNewEnough, runDoctor, summarizeChecks, type DoctorDeps, type ExecResult } from "../src/doctor";
+import { DEFAULT_COURSES } from "../src/courses";
+import type { Runner } from "../src/claude";
+
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "sd-doc-"));
+const res = (stdout: string, code = 0): ExecResult => ({ code, stdout, stderr: "" });
+
+/** A fake machine: map "cmd arg arg" -> result, or undefined to simulate a missing program. */
+function machine(map: Record<string, ExecResult | undefined>): DoctorDeps["exec"] {
+  return async (cmd, args) => {
+    const r = map[[cmd, ...args].join(" ")];
+    if (!r) throw Object.assign(new Error(`spawn ${cmd} ENOENT`), { code: "ENOENT" });
+    return r;
+  };
+}
+
+const healthy = {
+  "claude --version": res("2.1.310 (Claude Code)\n"),
+  "claude auth status": res('{"loggedIn": true, "authMethod": "claude.ai"}'),
+  "claude mcp list": res("claude.ai Granola: https://mcp.granola.ai/mcp - ✔ Connected\n"),
+  "yt-dlp --version": res("2026.10.01\n"),
+};
+
+const base = (over: Partial<DoctorDeps> = {}): DoctorDeps => {
+  const notesDir = tmp();
+  fs.mkdirSync(path.join(notesDir, "ECON300"));
+  fs.writeFileSync(path.join(notesDir, "ECON300", "2026-10-14_a.md"), "---\ntitle: A\n---\nbody");
+  return { exec: machine(healthy), dataDir: tmp(), notesDir, courses: DEFAULT_COURSES, ...over };
+};
+const byId = (cs: Awaited<ReturnType<typeof runDoctor>>, id: string) => cs.find((c) => c.id === id)!;
+
+describe("doctor", () => {
+  it("reports a healthy machine with no problems", async () => {
+    const checks = await runDoctor(base());
+    expect(summarizeChecks(checks)).toEqual({ ok: checks.length, warn: 0, fail: 0 });
+    expect(byId(checks, "login").detail).toContain("claude.ai");
+    expect(byId(checks, "notes").detail).toContain("1 notes");
+  });
+
+  it("explains a missing Claude CLI", async () => {
+    const checks = await runDoctor(base({ exec: machine({}) }));
+    expect(byId(checks, "claude")).toMatchObject({ status: "fail" });
+    expect(byId(checks, "claude").fix).toMatch(/Install Claude Code/);
+    expect(byId(checks, "login")).toBeUndefined();
+    expect(byId(checks, "granola").status).toBe("warn");
+  });
+
+  it("explains an expired login with the exact command", async () => {
+    const checks = await runDoctor(base({ exec: machine({ ...healthy, "claude auth status": res('{"loggedIn": false, "authMethod": "none"}') }) }));
+    expect(byId(checks, "login")).toMatchObject({ status: "fail" });
+    expect(byId(checks, "login").fix).toContain("claude auth login");
+  });
+
+  it("distinguishes Granola not configured from not connected", async () => {
+    const none = await runDoctor(base({ exec: machine({ ...healthy, "claude mcp list": res("claude.ai Gmail: x - ✔ Connected\n") }) }));
+    expect(byId(none, "granola").fix).toContain("claude mcp add --transport http granola https://mcp.granola.ai/mcp");
+    const needs = await runDoctor(base({ exec: machine({ ...healthy, "claude mcp list": res("claude.ai Granola: https://mcp.granola.ai/mcp - ! Needs authentication\n") }) }));
+    expect(byId(needs, "granola").fix).toContain("/mcp");
+  });
+
+  it("doesn't blame Granola when the real problem is the login", async () => {
+    const out = await runDoctor(base({ exec: machine({ ...healthy, "claude auth status": res('{"loggedIn": false}'), "claude mcp list": res("(no servers)\n") }) }));
+    expect(byId(out, "granola").status).toBe("warn");
+    expect(byId(out, "granola").fix).toContain("claude auth login");
+    expect(byId(out, "granola").fix).not.toContain("mcp add");
+  });
+
+  it("flags a Node that is too old, and a broken SQLite", async () => {
+    expect(nodeIsNewEnough("22.13.0")).toBe(true);
+    expect(nodeIsNewEnough("v24.14.1")).toBe(true);
+    expect(nodeIsNewEnough("22.12.9")).toBe(false);
+    expect(nodeIsNewEnough("20.11.0")).toBe(false);
+    const checks = await runDoctor(base({ nodeVersion: "20.11.0", sqliteProbe: () => { throw new Error("no such module: fts5"); } }));
+    expect(byId(checks, "node").status).toBe("fail");
+    expect(byId(checks, "sqlite").detail).toContain("fts5");
+  });
+
+  it("warns when there are no notes yet, and about folders that aren't courses", async () => {
+    const empty = await runDoctor(base({ notesDir: path.join(tmp(), "nope") }));
+    expect(byId(empty, "notes")).toMatchObject({ status: "warn" });
+    const d = base();
+    fs.mkdirSync(path.join(d.notesDir, "FIN310"));
+    const stray = await runDoctor(d);
+    expect(byId(stray, "notes").detail).toContain("FIN310");
+  });
+
+  it("fails when the data folder can't be written", async () => {
+    const file = path.join(tmp(), "iam-a-file");
+    fs.writeFileSync(file, "x");
+    const checks = await runDoctor(base({ dataDir: path.join(file, "data") }));
+    expect(byId(checks, "data").status).toBe("fail");
+  });
+
+  it("treats missing yt-dlp as an optional warning", async () => {
+    const { "yt-dlp --version": _omit, ...rest } = healthy;
+    const checks = await runDoctor(base({ exec: machine(rest) }));
+    expect(byId(checks, "ytdlp")).toMatchObject({ status: "warn" });
+    expect(byId(checks, "ytdlp").fix).toContain("pip3 install --user yt-dlp");
+  });
+
+  it("deep check asks Claude a real question only when requested", async () => {
+    let asked = 0;
+    const runner: Runner = async () => {
+      asked++;
+      return { text: "ok" };
+    };
+    expect(byId(await runDoctor(base({ runner })), "ping")).toBeUndefined();
+    expect(asked).toBe(0);
+    expect(byId(await runDoctor(base({ runner }), { deep: true }), "ping")).toMatchObject({ status: "ok" });
+    expect(asked).toBe(1);
+    const failing: Runner = async () => {
+      throw new Error("OAuth session expired");
+    };
+    expect(byId(await runDoctor(base({ runner: failing }), { deep: true }), "ping").status).toBe("fail");
+  });
+
+  it("formats a readable report", async () => {
+    const out = formatChecks(await runDoctor(base({ exec: machine({}) })));
+    expect(out).toContain("✗ Claude Code CLI");
+    expect(out).toContain("→ Install Claude Code");
+    expect(out).toMatch(/\d+ ok · \d+ warnings · \d+ problems/);
+  });
+});

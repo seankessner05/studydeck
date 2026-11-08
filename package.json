@@ -7,12 +7,13 @@
   "scripts": {
     "css": "tailwindcss -i public/input.css -o public/app.css --minify",
     "build": "npm run css",
-    "dev": "npm run css && tsx watch src/server.ts",
-    "start": "npm run css && tsx src/server.ts",
-    "sync": "tsx src/sync-cli.ts",
+    "dev": "npm run css && tsx watch --disable-warning=ExperimentalWarning src/server.ts",
+    "start": "npm run css && tsx --disable-warning=ExperimentalWarning src/server.ts",
+    "sync": "tsx --disable-warning=ExperimentalWarning src/sync-cli.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "eval": "tsx src/eval/run.ts"
+    "eval": "tsx --disable-warning=ExperimentalWarning src/eval/run.ts",
+    "doctor": "tsx --disable-warning=ExperimentalWarning src/doctor-cli.ts"
   },
   "dependencies": {
     "express": "^5.3.0"

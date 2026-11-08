@@ -11,6 +11,7 @@ import { type ChatTurn } from "./prompt.js";
 import { answerQuestion } from "./answer.js";
 import { appendMessage, clearChat, loadChats, studyStreak, type ChatMessage } from "./chats.js";
 import { loadSettings, saveSettings } from "./settings.js";
+import { runDoctor } from "./doctor.js";
 import { DATA_DIR } from "./paths.js";
 import { runSync } from "./sync.js";
 
@@ -124,6 +125,10 @@ export function createApp(deps: AppDeps) {
       }
     }
     res.end();
+  });
+
+  app.get("/api/doctor", async (req, res) => {
+    res.json(await runDoctor({ dataDir: deps.dataDir, notesDir: deps.notesDir, courses: loadRegistry(deps.dataDir), runner: deps.runner }, { deep: req.query.deep === "1" }));
   });
 
   app.post("/api/sync", async (_req, res) => {

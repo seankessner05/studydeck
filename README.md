@@ -87,7 +87,7 @@ NotebookLM is a great product, and it also cites its sources. StudyDeck is narro
 
 ## Quick start
 
-You need **Node 20+** and **[Claude Code](https://claude.com/claude-code)** installed and logged in (run `claude` once). No API key is required; StudyDeck uses your existing Claude login.
+You need **Node 22.13+** (24 recommended) and **[Claude Code](https://claude.com/claude-code)** installed and logged in (run `claude` once). No API key is required; StudyDeck uses your existing Claude login.
 
 ```bash
 # 1. Get the code
@@ -113,7 +113,7 @@ Then run `/mcp` inside Claude Code to authenticate.
 
 Until you sync, StudyDeck uses the 21 sample notes in `./sample-notes`. Flip **Demo mode** in the sidebar to use the samples even after you have real notes.
 
-**Scripts:** `npm start` (build CSS + run), `npm run dev` (auto-reload), `npm run sync`, `npm test`, `npm run typecheck`. Set `PORT` to change the port.
+**Scripts:** `npm start` (build CSS + run), `npm run dev` (auto-reload), `npm run sync`, `npm run doctor` (checks your setup and says how to fix anything), `npm run eval` (regression questions against the sample notes), `npm test`, `npm run typecheck`. Set `PORT` to change the port.
 
 ### Note format
 
@@ -161,7 +161,8 @@ Name meetings in Granola with a course prefix (`ECON300 Fiscal policy`) for perf
 ## Development
 
 ```bash
-npm test          # 34 tests: note loading, retrieval, citation parsing, prompt, sync, API
+npm test          # 77 tests: notes, retrieval, citations, prompts, sync, course registry, migrations, doctor, API
+npm run eval      # 19 real questions to Claude; reports regressions vs. the last run (needs a Claude login)
 npm run typecheck
 ```
 
